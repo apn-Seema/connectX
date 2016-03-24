@@ -1,0 +1,258 @@
+/*
+	RESPONDY VERSION 1.1
+
+	defaults: (
+		compatibility: false,
+		content-width: 1000,
+		columns: 12,
+		padding: 10,
+		base: true,
+		offset: false,
+		pushpull: false,
+		vis: false,
+		sizes: (
+				sml: (break: 500, type: max-width),
+				lrg: (break: 800, type: min-width)
+			)
+	)
+*/
+
+@function to-em($px-size, $em: 1) {
+	@return $px-size / ( 16 * $em ) + em;
+}
+
+@function to-rem($px-size) {
+	@return $px-size / 16 + rem;
+}
+
+@mixin clearfix {
+	*zoom: 1;
+	&:before, &:after { content: " "; display: table; }
+	&:after { clear: both; }
+}
+
+@mixin gutters($amount:10){
+	.gutter{
+	padding: to-em($amount);
+
+		&-vertical{
+			padding-top: to-em($amount);
+			padding-bottom: to-em($amount);
+		}
+		&-horizontal{
+			padding-left: to-em($amount);
+			padding-right: to-em($amount);
+		}
+		&-top{
+			padding-top: to-em($amount);
+		}
+		&-bottom{
+			padding-bottom: to-em($amount);
+		}
+		&-left{
+			padding-left: to-em($amount);
+		}
+		&-right{
+			padding-left: to-em($amount);
+		}
+	}
+}
+
+@mixin aligns{
+	.align{
+		&-center{
+			text-align: center;
+		}
+		&-left{
+			text-align: left;
+		}
+		&-right{
+			text-align: right;
+		}
+		&-justify{
+			text-align: justify;
+		}
+		&-top{
+			vertical-align: top;
+		}
+		&-bottom{
+			vertical-align: bottom;
+		}
+		&-middle{
+			vertical-align: middle;
+		}
+	}
+}
+
+//==========================================
+//----------	Create Grid 	------------
+//==========================================
+// @each key, value in 'map/list'
+@mixin Respondy( $layout-params: () ){
+	$respond-defaults: (
+		compatibility: false,
+		content-width: 1000,
+		columns: 12,
+		padding: 10,
+		base: true,
+		offset: false,
+		pushpull: false,
+		vis: false
+	);
+	$default-sizes: (
+		sizes: (
+				sml: (break: 500, type: max-width),
+				lrg: (break: 800, type: min-width)
+			)
+		);
+
+	// overwrite defaults with user specs
+	$layout-params: map-merge($respond-defaults, $layout-params);
+	@if map-get($layout-params, sizes) == null {
+		$layout-params: map-merge($layout-params, $default-sizes);
+	}
+	$padding: map-get($layout-params, padding);
+
+	.cf{@include clearfix }
+
+	.row {
+		width: 100%;
+		max-width:  to-em(map-get($layout-params, content-width));
+		margin-left: auto;
+		margin-right: auto;
+		@include clearfix;
+	}
+	.row .row{
+		@if map-get($layout-params, compatibility) {
+			margin-right: -1% * $padding;
+			margin-left: -1% * $padding;
+		} @else {
+			margin-left: -(to-rem($padding));
+			margin-right: -(to-rem($padding));
+		}
+		width: auto;
+		max-width: none;
+	}
+
+	.cell {
+		position: relative;
+		@if map-get($layout-params, compatibility) {
+			padding-left: $padding * 1%;
+			padding-right: $padding * 1%;
+		} @else {
+			padding-left: to-rem($padding);
+			padding-right: to-rem($padding);
+			box-sizing: border-box;
+		}
+		float: left;
+
+		// makes right edge aligned despite browser rounding errors
+		&:last-child {
+			float: right;
+		}
+	}
+	.cell-rev {
+		@extend .cell;
+		float: right;
+	}
+
+	.cell.end{
+		float: left !important;
+	}
+
+	*[class$=-vis]{
+		display: none;
+	}
+
+
+	$gen-types: ('base', 'offset', 'pushpull', 'vis');
+
+	@each $size-name, $size-info in map-get($layout-params, sizes){
+		@media(map-get($size-info, type): to-em(map-get($size-info, break))) {
+			@each $type in $gen-types {
+				@if map-get($layout-params, $type) == true {
+					@include make-cell($size-name, $type, $layout-params);
+				}
+			}
+		}
+	}
+
+	@each $type in $gen-types {
+		@if map-get($layout-params, $type) == true {
+			@include make-cell(cell, $type, $layout-params);
+		}
+	}
+}
+
+
+@mixin make-cell( $size, $type, $info ) {
+	$doc-columns: map-get($info, columns);
+	$doc-padding: map-get($info, padding);
+	$isImportant: null;
+	@if $size != cell {
+		$isImportant: !important;
+	};
+
+	@for $i from 1 through $doc-columns {
+		@if $type == base {
+			.#{$size}-#{$i} {
+				@if $size == cell {
+					@extend .cell;
+				}
+				@if map-get($info, compatibility) {
+					width: ($i / $doc-columns * 100 - ($doc-padding * 2) * 1%) $isImportant;
+				} @else {
+					width: ($i / $doc-columns * 100%) $isImportant;
+				}
+			}
+		}
+
+		@if $type == offset and $i != $doc-columns {
+			.#{$size}-off-#{$i} {
+				margin-left: ($i / $doc-columns * 100%) $isImportant;
+			}
+		}
+
+		@if $type == pushpull and $i != $doc-columns {
+			.#{$size}-push-#{$i} {
+				left: ($i / $doc-columns * 100%) $isImportant;
+			}
+			.#{$size}-pull-#{$i} {
+				right: ($i / $doc-columns * 100%) $isImportant;
+			}
+		}
+	}
+
+	@if $type == base {
+		.#{$size}-break.#{$size}-break.#{$size}-break{
+			display: block $isImportant;
+		}
+		.#{$size}-center.#{$size}-center{
+			float: none;
+			margin-left: auto;
+			margin-right: auto;
+		}
+		@if $size != cell {
+			.cell-break.cell-break.cell-break{
+				display: initial;
+			}
+			.cell-center{
+				margin-left: initial;
+				margin-right: initial;
+			}
+		}
+	}
+	@if $type == offset {
+		.#{$size}-off-0 { margin-left: 0% $isImportant;}
+	}
+	@if $type == vis {
+		.#{$size}-vis{
+			display: initial $isImportant;
+		}
+		@if $size != cell {
+			.cell-vis.cell-vis{
+				display: none;
+			}
+		}
+	}
+}
